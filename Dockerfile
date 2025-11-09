@@ -1,0 +1,22 @@
+# XQ Fitness Database Container
+FROM postgres:16-alpine
+
+# Set environment variables for database configuration
+ENV POSTGRES_DB=xq_fitness
+ENV POSTGRES_USER=xq_user
+ENV POSTGRES_PASSWORD=xq_password
+
+# Copy initialization scripts
+# PostgreSQL will run scripts in /docker-entrypoint-initdb.d/ in alphabetical order
+COPY schemas/schema.sql /docker-entrypoint-initdb.d/01-schema.sql
+COPY schemas/seed.sql /docker-entrypoint-initdb.d/02-seed.sql
+
+# Expose PostgreSQL port
+EXPOSE 5432
+
+# Health check to ensure database is ready
+HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=3 \
+  CMD pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} || exit 1
+
+# Default command (inherited from base image)
+# CMD ["postgres"]

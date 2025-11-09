@@ -1,0 +1,17 @@
+# IDE
+.idea/
+.vscode/
+
+# Version control
+.git/
+.gitignore
+
+# Documentation
+README.md
+
+# Docker files
+docker-compose.yml
+.dockerignore
+
+# Migrations (if not needed in container)
+migrations/
