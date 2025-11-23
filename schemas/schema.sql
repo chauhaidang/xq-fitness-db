@@ -1,7 +1,7 @@
 -- XQ Fitness Database Schema
 
 -- Muscle groups reference table
-CREATE TABLE muscle_groups (
+CREATE TABLE IF NOT EXISTS muscle_groups (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL UNIQUE,
     description TEXT,
@@ -9,7 +9,7 @@ CREATE TABLE muscle_groups (
 );
 
 -- Workout routines
-CREATE TABLE workout_routines (
+CREATE TABLE IF NOT EXISTS workout_routines (
     id SERIAL PRIMARY KEY,
     name VARCHAR(200) NOT NULL,
     description TEXT,
@@ -19,7 +19,7 @@ CREATE TABLE workout_routines (
 );
 
 -- Workout days within a routine
-CREATE TABLE workout_days (
+CREATE TABLE IF NOT EXISTS workout_days (
     id SERIAL PRIMARY KEY,
     routine_id INTEGER NOT NULL REFERENCES workout_routines(id) ON DELETE CASCADE,
     day_number INTEGER NOT NULL,
@@ -31,7 +31,7 @@ CREATE TABLE workout_days (
 );
 
 -- Sets configuration for each muscle group on a workout day
-CREATE TABLE workout_day_sets (
+CREATE TABLE IF NOT EXISTS workout_day_sets (
     id SERIAL PRIMARY KEY,
     workout_day_id INTEGER NOT NULL REFERENCES workout_days(id) ON DELETE CASCADE,
     muscle_group_id INTEGER NOT NULL REFERENCES muscle_groups(id) ON DELETE CASCADE,
@@ -43,10 +43,10 @@ CREATE TABLE workout_day_sets (
 );
 
 -- Indexes for better query performance
-CREATE INDEX idx_workout_days_routine ON workout_days(routine_id);
-CREATE INDEX idx_workout_day_sets_day ON workout_day_sets(workout_day_id);
-CREATE INDEX idx_workout_day_sets_muscle ON workout_day_sets(muscle_group_id);
-CREATE INDEX idx_routines_active ON workout_routines(is_active);
+CREATE INDEX IF NOT EXISTS idx_workout_days_routine ON workout_days(routine_id);
+CREATE INDEX IF NOT EXISTS idx_workout_day_sets_day ON workout_day_sets(workout_day_id);
+CREATE INDEX IF NOT EXISTS idx_workout_day_sets_muscle ON workout_day_sets(muscle_group_id);
+CREATE INDEX IF NOT EXISTS idx_routines_active ON workout_routines(is_active);
 
 -- Updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()

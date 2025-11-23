@@ -12,4 +12,5 @@ INSERT INTO muscle_groups (name, description) VALUES
     ('Glutes', 'Gluteus maximus, medius, and minimus'),
     ('Calves', 'Gastrocnemius and soleus'),
     ('Abs', 'Rectus abdominis and obliques'),
-    ('Lower Back', 'Erector spinae');
+    ('Lower Back', 'Erector spinae')
+ON CONFLICT (name) DO NOTHING;

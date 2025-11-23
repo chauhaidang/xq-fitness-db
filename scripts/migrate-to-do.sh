@@ -70,10 +70,14 @@ if [[ "$APPLY_SCHEMA" == "true" ]]; then
     exit 1
   fi
   
-  if $PSQL_CMD -f "$SCHEMAS_DIR/schema.sql" > /dev/null 2>&1; then
+  echo "   Executing schema.sql..."
+  if $PSQL_CMD -f "$SCHEMAS_DIR/schema.sql" 2>&1; then
     echo "   ✓ Schema applied successfully"
   else
-    echo "   ⚠️  Schema may already exist or encountered errors (continuing...)"
+    EXIT_CODE=$?
+    echo "   ❌ Schema application failed with exit code $EXIT_CODE"
+    echo "   Check the errors above for details"
+    exit 1
   fi
 fi
 
@@ -85,10 +89,14 @@ if [[ "$APPLY_SEED" == "true" ]]; then
     exit 1
   fi
   
-  if $PSQL_CMD -f "$SCHEMAS_DIR/seed.sql" > /dev/null 2>&1; then
+  echo "   Executing seed.sql..."
+  if $PSQL_CMD -f "$SCHEMAS_DIR/seed.sql" 2>&1; then
     echo "   ✓ Seed data applied successfully"
   else
-    echo "   ⚠️  Seed data may already exist or encountered errors (continuing...)"
+    EXIT_CODE=$?
+    echo "   ❌ Seed data application failed with exit code $EXIT_CODE"
+    echo "   Check the errors above for details"
+    exit 1
   fi
 fi
 
