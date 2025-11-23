@@ -49,6 +49,39 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Get runner IP address
+        id: ip
+        run: |
+          RUNNER_IP=$(curl -s https://api.ipify.org)
+          echo "Runner IP: $RUNNER_IP"
+          echo "ip=$RUNNER_IP" >> $GITHUB_OUTPUT
+
+      - name: Whitelist runner IP in DigitalOcean
+        id: whitelist
+        env:
+          DO_TOKEN: ${{ secrets.DO_TOKEN }}
+          DB_ID: ${{ secrets.DB_ID }}
+          RUNNER_IP: ${{ steps.ip.outputs.ip }}
+        run: |
+          echo "Adding IP $RUNNER_IP to database trusted sources..."
+          
+          # Add the runner IP to the database firewall
+          RESPONSE=$(curl -s -X PUT \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $DO_TOKEN" \
+            -d "{\"rules\": [{\"type\": \"ip_addr\", \"value\": \"$RUNNER_IP\"}]}" \
+            "https://api.digitalocean.com/v2/databases/$DB_ID/firewall")
+          
+          if echo "$RESPONSE" | grep -q "error"; then
+            echo "❌ Failed to whitelist IP"
+            echo "$RESPONSE"
+            exit 1
+          fi
+          
+          echo "✓ IP whitelisted successfully"
+          echo "Waiting 10 seconds for firewall rules to propagate..."
+          sleep 10
+
       - name: Install PostgreSQL client
         run: |
           sudo apt-get update
@@ -87,6 +120,24 @@ jobs:
               exit 1
               ;;
           esac
+
+      - name: Remove runner IP from whitelist
+        if: always()
+        env:
+          DO_TOKEN: ${{ secrets.DO_TOKEN }}
+          DB_ID: ${{ secrets.DB_ID }}
+        run: |
+          echo "Cleaning up: Removing runner IP from trusted sources..."
+          
+          # Reset to original firewall rules (or keep it - adjust as needed)
+          # This removes the temporary IP we added
+          curl -s -X PUT \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $DO_TOKEN" \
+            -d '{"rules": []}' \
+            "https://api.digitalocean.com/v2/databases/$DB_ID/firewall" || true
+          
+          echo "✓ Cleanup completed"
 
       - name: Migration summary
         if: success()
