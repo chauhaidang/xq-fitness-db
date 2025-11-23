@@ -1,0 +1,107 @@
+name: Migrate Database to DigitalOcean
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Migration mode'
+        required: true
+        default: 'full'
+        type: choice
+        options:
+          - full
+          - schema-only
+          - seed-only
+      confirm:
+        description: 'Type "yes" to confirm migration'
+        required: true
+        type: string
+
+jobs:
+  validate:
+    name: Validate Migration Request
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check confirmation
+        run: |
+          if [[ "${{ github.event.inputs.confirm }}" != "yes" ]]; then
+            echo "❌ Migration not confirmed. Please type 'yes' in the confirm field."
+            exit 1
+          fi
+          echo "✓ Migration confirmed"
+
+      - name: Display migration plan
+        run: |
+          echo "Migration Plan:"
+          echo "  Mode: ${{ github.event.inputs.mode }}"
+          echo "  Target: DigitalOcean PostgreSQL"
+          echo "  Triggered by: ${{ github.actor }}"
+          echo "  Commit: ${{ github.sha }}"
+
+  migrate:
+    name: Run Database Migration
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Prepare migration script
+        run: |
+          chmod +x scripts/migrate-to-do.sh
+
+      - name: Run migration
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          SSL_MODE: require
+        run: |
+          cd scripts
+          
+          case "${{ github.event.inputs.mode }}" in
+            schema-only)
+              echo "Running schema-only migration..."
+              ./migrate-to-do.sh --schema-only
+              ;;
+            seed-only)
+              echo "Running seed-only migration..."
+              ./migrate-to-do.sh --seed-only
+              ;;
+            full)
+              echo "Running full migration (schema + seed)..."
+              ./migrate-to-do.sh
+              ;;
+            *)
+              echo "Unknown mode: ${{ github.event.inputs.mode }}"
+              exit 1
+              ;;
+          esac
+
+      - name: Migration summary
+        if: success()
+        run: |
+          echo "✓ Migration completed successfully!"
+          echo ""
+          echo "Summary:"
+          echo "  Mode: ${{ github.event.inputs.mode }}"
+          echo "  Database: ${{ secrets.DB_NAME }}"
+          echo "  Time: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "❌ Migration failed!"
+          echo "Please check the logs above for details."
+          exit 1
+

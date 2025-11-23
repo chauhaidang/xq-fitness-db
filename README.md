@@ -109,3 +109,35 @@ docker run -d \
   ghcr.io/YOUR_USERNAME/xq-fitness-db:latest
 ```
 
+## Migrating to DigitalOcean
+
+For production deployment, migrate the schema and seed data to DigitalOcean PostgreSQL:
+
+### Using GitHub Actions (Recommended)
+
+1. Add database connection secrets to GitHub (Settings → Secrets → Actions):
+   - `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`
+2. Go to Actions → **Migrate Database to DigitalOcean**
+3. Click **Run workflow** → Choose mode → Type "yes" → **Run**
+
+### Using Local Script
+
+```bash
+# Set environment variables
+export DB_HOST=your-db-host
+export DB_PORT=25060
+export DB_USER=xq_app_user
+export DB_PASSWORD=your-password
+export DB_NAME=xq_fitness
+
+# Run migration
+cd scripts
+./migrate-to-do.sh
+
+# Or schema only / seed only
+./migrate-to-do.sh --schema-only
+./migrate-to-do.sh --seed-only
+```
+
+See [MIGRATION.md](./MIGRATION.md) for detailed migration documentation.
+
