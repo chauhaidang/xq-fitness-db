@@ -57,12 +57,15 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
--- Apply updated_at triggers
+-- Apply updated_at triggers (drop first to make idempotent)
+DROP TRIGGER IF EXISTS update_workout_routines_updated_at ON workout_routines;
 CREATE TRIGGER update_workout_routines_updated_at BEFORE UPDATE ON workout_routines
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_workout_days_updated_at ON workout_days;
 CREATE TRIGGER update_workout_days_updated_at BEFORE UPDATE ON workout_days
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_workout_day_sets_updated_at ON workout_day_sets;
 CREATE TRIGGER update_workout_day_sets_updated_at BEFORE UPDATE ON workout_day_sets
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
