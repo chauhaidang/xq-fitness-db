@@ -85,11 +85,20 @@ jobs:
       - name: Install PostgreSQL client
         run: |
           sudo apt-get update
-          sudo apt-get install -y postgresql-client
+          sudo apt-get install -y postgresql-client jq
+
+      - name: Install doctl
+        run: |
+          cd /tmp
+          wget https://github.com/digitalocean/doctl/releases/download/v1.104.0/doctl-1.104.0-linux-amd64.tar.gz
+          tar xf doctl-1.104.0-linux-amd64.tar.gz
+          sudo mv doctl /usr/local/bin
+          doctl version
 
       - name: Prepare migration script
         run: |
           chmod +x scripts/migrate-to-do.sh
+          chmod +x scripts/grant-permissions.sh
 
       - name: Run migration
         env:
@@ -120,6 +129,51 @@ jobs:
               exit 1
               ;;
           esac
+
+      - name: Grant database permissions
+        if: github.event.inputs.mode != 'seed-only'
+        env:
+          DO_TOKEN: ${{ secrets.DO_TOKEN }}
+          DB_ID: ${{ secrets.DB_ID }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_ADMIN_PASSWORD: ${{ secrets.DB_ADMIN_PASSWORD }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          APP_DB_USER: ${{ secrets.APP_DB_USER }}
+        run: |
+          echo ">> Granting database permissions to app user..."
+          
+          # Use admin password if set, otherwise fall back to regular DB password
+          if [[ -n "$DB_ADMIN_PASSWORD" ]]; then
+            export DB_PASSWORD="$DB_ADMIN_PASSWORD"
+          elif [[ -z "$DB_PASSWORD" ]]; then
+            echo "⚠️  DB_ADMIN_PASSWORD or DB_PASSWORD secret not set, skipping permission grant"
+            echo "   You may need to grant permissions manually"
+            exit 0
+          fi
+          
+          cd scripts
+          
+          # Get cluster name from DB_ID using doctl
+          doctl auth init -t "$DO_TOKEN" >/dev/null
+          CLUSTER_NAME=$(doctl databases get "$DB_ID" --output json | jq -r '.name')
+          
+          if [[ -z "$CLUSTER_NAME" ]]; then
+            echo "⚠️  Could not determine cluster name, skipping permission grant"
+            echo "   You may need to grant permissions manually"
+            exit 0
+          fi
+          
+          # Set environment variables for the script
+          export DB_CLUSTER_NAME="$CLUSTER_NAME"
+          export APP_DB_USER="${APP_DB_USER:-xq_app_user}"
+          
+          # Run the grant permissions script
+          ./grant-permissions.sh || {
+            echo "⚠️  Permission grant failed, but continuing..."
+            echo "   You may need to grant permissions manually"
+          }
 
       - name: Remove runner IP from whitelist
         if: always()
