@@ -31,15 +31,20 @@ APP_DB_USER="${APP_DB_USER:-xq_app_user}"
 echo ">> Authenticating doctl context"
 doctl auth init -t "$DO_TOKEN" >/dev/null
 
-echo ">> Finding database cluster ($DB_CLUSTER_NAME)"
-DB_CLUSTER_ID=$(doctl databases list --output json | jq -r '.[] | select(.name=="'"$DB_CLUSTER_NAME"'") | .id' || echo "")
-
-if [[ -z "$DB_CLUSTER_ID" ]]; then
-  echo "❌ Error: Database cluster '$DB_CLUSTER_NAME' not found" >&2
-  exit 1
+# Use DB_CLUSTER_ID if provided, otherwise look up by name
+if [[ -n "${DB_CLUSTER_ID:-}" ]]; then
+  echo ">> Using provided database cluster ID: $DB_CLUSTER_ID"
+else
+  echo ">> Finding database cluster ($DB_CLUSTER_NAME)"
+  DB_CLUSTER_ID=$(doctl databases list --output json | jq -r '.[] | select(.name=="'"$DB_CLUSTER_NAME"'") | .id' || echo "")
+  
+  if [[ -z "$DB_CLUSTER_ID" ]]; then
+    echo "❌ Error: Database cluster '$DB_CLUSTER_NAME' not found" >&2
+    exit 1
+  fi
+  
+  echo "   Found cluster: $DB_CLUSTER_ID"
 fi
-
-echo "   Found cluster: $DB_CLUSTER_ID"
 
 echo ">> Fetching connection details"
 CONNECTION_JSON=$(doctl databases connection "$DB_CLUSTER_ID" --output json)

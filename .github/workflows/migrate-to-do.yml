@@ -155,9 +155,16 @@ jobs:
           
           cd scripts
           
-          # Get cluster name from DB_ID using doctl
+          # Get cluster name from DB_ID using doctl (handle both array and object responses)
           doctl auth init -t "$DO_TOKEN" >/dev/null
-          CLUSTER_NAME=$(doctl databases get "$DB_ID" --output json | jq -r '.name')
+          CLUSTER_JSON=$(doctl databases get "$DB_ID" --output json)
+          
+          # Handle both array and object formats
+          if echo "$CLUSTER_JSON" | jq -e 'type == "array"' >/dev/null 2>&1; then
+            CLUSTER_NAME=$(echo "$CLUSTER_JSON" | jq -r '.[0].name // empty')
+          else
+            CLUSTER_NAME=$(echo "$CLUSTER_JSON" | jq -r '.name // empty')
+          fi
           
           if [[ -z "$CLUSTER_NAME" ]]; then
             echo "⚠️  Could not determine cluster name, skipping permission grant"
@@ -167,6 +174,7 @@ jobs:
           
           # Set environment variables for the script
           export DB_CLUSTER_NAME="$CLUSTER_NAME"
+          export DB_CLUSTER_ID="$DB_ID"
           export APP_DB_USER="${APP_DB_USER:-xq_app_user}"
           
           # Run the grant permissions script
