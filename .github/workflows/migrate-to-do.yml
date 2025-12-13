@@ -12,6 +12,12 @@ on:
           - full
           - schema-only
           - seed-only
+          - migration
+          - all-migrations
+      migration_files:
+        description: 'Migration file name (required when mode is "migration")'
+        required: false
+        type: string
       confirm:
         description: 'Type "yes" to confirm migration'
         required: true
@@ -34,6 +40,13 @@ jobs:
         run: |
           echo "Migration Plan:"
           echo "  Mode: ${{ github.event.inputs.mode }}"
+          if [[ "${{ github.event.inputs.mode }}" == "migration" ]]; then
+            if [[ -z "${{ github.event.inputs.migration_files }}" ]]; then
+              echo "❌ Migration file name is required when mode is 'migration'"
+              exit 1
+            fi
+            echo "  Migration File: ${{ github.event.inputs.migration_files }}"
+          fi
           echo "  Target: DigitalOcean PostgreSQL"
           echo "  Triggered by: ${{ github.actor }}"
           echo "  Commit: ${{ github.sha }}"
@@ -123,6 +136,18 @@ jobs:
             full)
               echo "Running full migration (schema + seed)..."
               ./migrate-to-do.sh
+              ;;
+            migration)
+              if [[ -z "${{ github.event.inputs.migration_files }}" ]]; then
+                echo "❌ Migration file name is required when mode is 'migration'"
+                exit 1
+              fi
+              echo "Running specific migration: ${{ github.event.inputs.migration_files }}"
+              ./migrate-to-do.sh --migration "${{ github.event.inputs.migration_files }}"
+              ;;
+            all-migrations)
+              echo "Running all migrations..."
+              ./migrate-to-do.sh --all-migrations
               ;;
             *)
               echo "Unknown mode: ${{ github.event.inputs.mode }}"

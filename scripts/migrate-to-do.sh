@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Migrate database schema and seed data to DigitalOcean PostgreSQL
-# Usage: ./migrate-to-do.sh [--schema-only|--seed-only]
+# Usage: ./migrate-to-do.sh [--schema-only|--seed-only|--migration <file>|--all-migrations]
 
 if ! command -v psql >/dev/null; then
   echo "psql CLI is required (install PostgreSQL client)." >&2
@@ -12,6 +12,8 @@ fi
 # Parse arguments
 APPLY_SCHEMA=true
 APPLY_SEED=true
+MIGRATION_MODE=""
+MIGRATION_FILE=""
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -23,9 +25,27 @@ while [[ $# -gt 0 ]]; do
       APPLY_SCHEMA=false
       shift
       ;;
+    --migration)
+      MIGRATION_MODE="single"
+      if [[ $# -lt 2 ]]; then
+        echo "❌ --migration requires a migration file name" >&2
+        echo "Usage: $0 --migration <file>" >&2
+        exit 1
+      fi
+      MIGRATION_FILE="$2"
+      APPLY_SCHEMA=false
+      APPLY_SEED=false
+      shift 2
+      ;;
+    --all-migrations)
+      MIGRATION_MODE="all"
+      APPLY_SCHEMA=false
+      APPLY_SEED=false
+      shift
+      ;;
     *)
       echo "Unknown option: $1" >&2
-      echo "Usage: $0 [--schema-only|--seed-only]" >&2
+      echo "Usage: $0 [--schema-only|--seed-only|--migration <file>|--all-migrations]" >&2
       exit 1
       ;;
   esac
@@ -48,6 +68,7 @@ PSQL_CMD="psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -v ON_ERROR_STOP=
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCHEMAS_DIR="$SCRIPT_DIR/../schemas"
+MIGRATIONS_DIR="$SCRIPT_DIR/../migrations"
 
 echo ">> Migrating database to DigitalOcean PostgreSQL"
 echo "   Host: $DB_HOST:$DB_PORT"
@@ -97,6 +118,60 @@ if [[ "$APPLY_SEED" == "true" ]]; then
     echo "   ❌ Seed data application failed with exit code $EXIT_CODE"
     echo "   Check the errors above for details"
     exit 1
+  fi
+fi
+
+# Apply migrations
+if [[ "$MIGRATION_MODE" == "single" ]]; then
+  echo ">> Applying migration: $MIGRATION_FILE"
+  if [[ ! -d "$MIGRATIONS_DIR" ]]; then
+    echo "❌ Migrations directory not found: $MIGRATIONS_DIR" >&2
+    exit 1
+  fi
+  
+  MIGRATION_PATH="$MIGRATIONS_DIR/$MIGRATION_FILE"
+  if [[ ! -f "$MIGRATION_PATH" ]]; then
+    echo "❌ Migration file not found: $MIGRATION_PATH" >&2
+    exit 1
+  fi
+  
+  echo "   Executing $MIGRATION_FILE..."
+  if $PSQL_CMD -f "$MIGRATION_PATH" 2>&1; then
+    echo "   ✓ Migration applied successfully"
+  else
+    EXIT_CODE=$?
+    echo "   ❌ Migration failed with exit code $EXIT_CODE"
+    echo "   Check the errors above for details"
+    exit 1
+  fi
+elif [[ "$MIGRATION_MODE" == "all" ]]; then
+  echo ">> Applying all migrations..."
+  if [[ ! -d "$MIGRATIONS_DIR" ]]; then
+    echo "❌ Migrations directory not found: $MIGRATIONS_DIR" >&2
+    exit 1
+  fi
+  
+  # Find all .sql files in migrations directory and sort them numerically
+  MIGRATION_FILES=$(find "$MIGRATIONS_DIR" -maxdepth 1 -name "*.sql" -type f | sort -V)
+  
+  if [[ -z "$MIGRATION_FILES" ]]; then
+    echo "   ⚠️  No migration files found in $MIGRATIONS_DIR"
+  else
+    MIGRATION_COUNT=0
+    while IFS= read -r MIGRATION_PATH; do
+      MIGRATION_FILE=$(basename "$MIGRATION_PATH")
+      MIGRATION_COUNT=$((MIGRATION_COUNT + 1))
+      echo "   [$MIGRATION_COUNT] Executing $MIGRATION_FILE..."
+      if $PSQL_CMD -f "$MIGRATION_PATH" 2>&1; then
+        echo "      ✓ $MIGRATION_FILE applied successfully"
+      else
+        EXIT_CODE=$?
+        echo "      ❌ $MIGRATION_FILE failed with exit code $EXIT_CODE"
+        echo "      Check the errors above for details"
+        exit 1
+      fi
+    done <<< "$MIGRATION_FILES"
+    echo "   ✓ All $MIGRATION_COUNT migration(s) applied successfully"
   fi
 fi
 
