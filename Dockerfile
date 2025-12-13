@@ -11,6 +11,17 @@ ENV POSTGRES_PASSWORD=xq_password
 COPY schemas/schema.sql /docker-entrypoint-initdb.d/01-schema.sql
 COPY schemas/seed.sql /docker-entrypoint-initdb.d/02-seed.sql
 
+# Copy and execute migration files
+# PostgreSQL will execute .sql files in /docker-entrypoint-initdb.d/ in alphabetical order
+# Copy migrations with 03- prefix to run after schema (01) and seed (02)
+# This ensures migrations execute automatically during container initialization
+COPY migrations/ /tmp/migrations/
+RUN find /tmp/migrations -name "*.sql" -type f | sort -V | while read file; do \
+      filename=$(basename "$file"); \
+      cp "$file" "/docker-entrypoint-initdb.d/03-${filename}"; \
+    done && \
+    rm -rf /tmp/migrations
+
 # Expose PostgreSQL port
 EXPOSE 5432
 

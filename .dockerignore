@@ -13,5 +13,3 @@ README.md
 docker-compose.yml
 .dockerignore
 
-# Migrations (if not needed in container)
-migrations/
