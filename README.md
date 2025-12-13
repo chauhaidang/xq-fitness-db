@@ -1,6 +1,10 @@
 # XQ Fitness Database Container
 
-This directory contains a Dockerized PostgreSQL database for the XQ Fitness application, pre-populated with schema and seed data.
+This directory contains a Dockerized PostgreSQL database for the XQ Fitness application, pre-populated with schema and seed data and all upcoming migrations
+
+[![Migrate Database to DigitalOcean](https://github.com/chauhaidang/xq-fitness-db/actions/workflows/migrate-to-do.yml/badge.svg)](https://github.com/chauhaidang/xq-fitness-db/actions/workflows/migrate-to-do.yml)
+
+[![Publish Docker Image](https://github.com/chauhaidang/xq-fitness-db/actions/workflows/publish-docker.yml/badge.svg)](https://github.com/chauhaidang/xq-fitness-db/actions/workflows/publish-docker.yml)
 
 ## Quick Start
 
