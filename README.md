@@ -50,16 +50,108 @@ postgresql://xq_user:xq_password@localhost:5432/xq_fitness
 
 The database includes the following tables:
 
+### Core Tables
 - `muscle_groups` - Reference table for muscle groups
 - `workout_routines` - Workout routine definitions
 - `workout_days` - Individual days within a routine
 - `workout_day_sets` - Sets configuration for muscle groups per day
 
+### Snapshot Tables
+- `weekly_snapshots` - Weekly snapshots of workout routines
+- `snapshot_workout_days` - Workout days captured in snapshots
+- `snapshot_workout_day_sets` - Sets configuration captured in snapshots
+
+### Schema Features
+- **Indexes**: Optimized indexes on foreign keys and frequently queried columns
+- **Triggers**: Automatic `updated_at` timestamp management for relevant tables
+- **Constraints**: Unique constraints and foreign key relationships ensure data integrity
+- **Cascade Deletes**: Related records are automatically cleaned up when parent records are deleted
+
+### Table Relationships
+
+**Core Workout Structure:**
+```
+workout_routines (1) → (N) workout_days (1) → (N) workout_day_sets (N) → (1) muscle_groups
+```
+
+**Snapshot Structure:**
+```
+weekly_snapshots (1) → (N) snapshot_workout_days (1) → (N) snapshot_workout_day_sets (N) → (1) muscle_groups
+```
+
+### Table Details
+
+#### Core Tables
+
+**muscle_groups**
+- `id` (SERIAL PRIMARY KEY) - Unique identifier
+- `name` (VARCHAR(100) UNIQUE) - Muscle group name
+- `description` (TEXT) - Optional description
+- `created_at` (TIMESTAMP) - Creation timestamp
+
+**workout_routines**
+- `id` (SERIAL PRIMARY KEY) - Unique identifier
+- `name` (VARCHAR(200)) - Routine name
+- `description` (TEXT) - Optional description
+- `is_active` (BOOLEAN) - Active status flag
+- `created_at` (TIMESTAMP) - Creation timestamp
+- `updated_at` (TIMESTAMP) - Last update timestamp (auto-managed)
+
+**workout_days**
+- `id` (SERIAL PRIMARY KEY) - Unique identifier
+- `routine_id` (INTEGER FK → workout_routines.id) - Parent routine
+- `day_number` (INTEGER) - Day number within routine
+- `day_name` (VARCHAR(100)) - Day name
+- `notes` (TEXT) - Optional notes
+- `created_at` (TIMESTAMP) - Creation timestamp
+- `updated_at` (TIMESTAMP) - Last update timestamp (auto-managed)
+- **Constraint**: Unique `(routine_id, day_number)`
+
+**workout_day_sets**
+- `id` (SERIAL PRIMARY KEY) - Unique identifier
+- `workout_day_id` (INTEGER FK → workout_days.id) - Parent workout day
+- `muscle_group_id` (INTEGER FK → muscle_groups.id) - Target muscle group
+- `number_of_sets` (INTEGER CHECK > 0) - Number of sets
+- `notes` (TEXT) - Optional notes
+- `created_at` (TIMESTAMP) - Creation timestamp
+- `updated_at` (TIMESTAMP) - Last update timestamp (auto-managed)
+- **Constraint**: Unique `(workout_day_id, muscle_group_id)`
+
+#### Snapshot Tables
+
+**weekly_snapshots**
+- `id` (SERIAL PRIMARY KEY) - Unique identifier
+- `routine_id` (INTEGER FK → workout_routines.id) - Snapshot routine reference
+- `week_start_date` (DATE) - Monday date of the week (ISO 8601)
+- `created_at` (TIMESTAMP) - Snapshot creation timestamp
+- `updated_at` (TIMESTAMP) - Last update timestamp (auto-managed)
+- **Constraint**: Unique `(routine_id, week_start_date)`
+
+**snapshot_workout_days**
+- `id` (SERIAL PRIMARY KEY) - Unique identifier
+- `snapshot_id` (INTEGER FK → weekly_snapshots.id) - Parent snapshot
+- `original_workout_day_id` (INTEGER) - Reference to original workout_day.id (no FK constraint)
+- `day_number` (INTEGER) - Day number within routine
+- `day_name` (VARCHAR(100)) - Day name at snapshot time
+- `notes` (TEXT) - Optional notes
+- `created_at` (TIMESTAMP) - Snapshot creation timestamp
+- **Constraint**: Unique `(snapshot_id, day_number)`
+
+**snapshot_workout_day_sets**
+- `id` (SERIAL PRIMARY KEY) - Unique identifier
+- `snapshot_workout_day_id` (INTEGER FK → snapshot_workout_days.id) - Parent snapshot day
+- `original_workout_day_set_id` (INTEGER) - Reference to original workout_day_set.id (no FK constraint)
+- `muscle_group_id` (INTEGER FK → muscle_groups.id) - Target muscle group
+- `number_of_sets` (INTEGER CHECK > 0) - Number of sets at snapshot time
+- `notes` (TEXT) - Optional notes
+- `created_at` (TIMESTAMP) - Snapshot creation timestamp
+- **Constraint**: Unique `(snapshot_workout_day_id, muscle_group_id)`
+
 ## Initial Data
 
 The database comes pre-populated with:
 
-- 12 muscle groups (Chest, Back, Shoulders, Biceps, Triceps, Forearms, Quadriceps, Hamstrings, Glutes, Calves, Abs, Lower Back)
+- **13 muscle groups**: Chest, Back, Shoulders, Biceps, Triceps, Forearms, Quadriceps, Hamstrings, Glutes, Calves, Abs, Lower Back, Abductor
 
 ## Customization
 

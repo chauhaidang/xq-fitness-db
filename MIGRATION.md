@@ -132,7 +132,7 @@ export DB_NAME=xq_fitness
 
 ### Schema (`schemas/schema.sql`)
 
-Creates the database structure:
+Creates the core database structure:
 - `muscle_groups` - Reference table for muscle groups
 - `workout_routines` - Workout routine definitions
 - `workout_days` - Days within a routine
@@ -140,10 +140,17 @@ Creates the database structure:
 - Indexes for performance
 - Triggers for auto-updating timestamps
 
+### Migrations (`migrations/`)
+
+Additional schema changes applied via migration files:
+- `001_add_weekly_snapshots.sql` - Adds weekly snapshot tables (`weekly_snapshots`, `snapshot_workout_days`, `snapshot_workout_day_sets`)
+- `002_add_abductor_muscle_group.sql` - Adds Abductor muscle group to seed data
+
 ### Seed Data (`schemas/seed.sql`)
 
 Inserts initial reference data:
-- 12 muscle groups (Chest, Back, Shoulders, etc.)
+- 12 muscle groups (Chest, Back, Shoulders, Biceps, Triceps, Forearms, Quadriceps, Hamstrings, Glutes, Calves, Abs, Lower Back)
+- Migration `002_add_abductor_muscle_group.sql` adds the 13th muscle group (Abductor)
 
 ## Best Practices
 
@@ -188,8 +195,10 @@ psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -c "SELECT * FROM muscle_gr
 ### Expected Result
 
 After a successful full migration, you should see:
-- 4 tables: `muscle_groups`, `workout_routines`, `workout_days`, `workout_day_sets`
-- 12 rows in `muscle_groups`
+- **7 tables**: 
+  - Core: `muscle_groups`, `workout_routines`, `workout_days`, `workout_day_sets`
+  - Snapshots: `weekly_snapshots`, `snapshot_workout_days`, `snapshot_workout_day_sets`
+- **13 rows in `muscle_groups`** (12 from seed + 1 from migration)
 - Various indexes and triggers
 
 ## Rollback
@@ -200,6 +209,9 @@ To rollback a migration:
 # Drop all tables (WARNING: This deletes all data!)
 export PGPASSWORD=$DB_PASSWORD
 psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME << EOF
+DROP TABLE IF EXISTS snapshot_workout_day_sets CASCADE;
+DROP TABLE IF EXISTS snapshot_workout_days CASCADE;
+DROP TABLE IF EXISTS weekly_snapshots CASCADE;
 DROP TABLE IF EXISTS workout_day_sets CASCADE;
 DROP TABLE IF EXISTS workout_days CASCADE;
 DROP TABLE IF EXISTS workout_routines CASCADE;
