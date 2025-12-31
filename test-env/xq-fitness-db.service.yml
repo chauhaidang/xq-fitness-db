@@ -1,0 +1,4 @@
+image: xq-fitness-db
+tag: latest
+ports:
+  - "5432:5432"

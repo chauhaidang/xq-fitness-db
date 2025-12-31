@@ -55,30 +55,11 @@ CREATE TABLE IF NOT EXISTS exercises (
     CONSTRAINT exercise_name_not_empty CHECK (LENGTH(TRIM(exercise_name)) > 0)
 );
 
--- Snapshot exercises table for capturing exercise data in weekly snapshots
-CREATE TABLE IF NOT EXISTS snapshot_exercises (
-    id SERIAL PRIMARY KEY,
-    snapshot_workout_day_id INTEGER NOT NULL REFERENCES snapshot_workout_days(id) ON DELETE CASCADE,
-    original_exercise_id INTEGER NOT NULL,
-    exercise_name VARCHAR(200) NOT NULL,
-    muscle_group_id INTEGER NOT NULL REFERENCES muscle_groups(id) ON DELETE RESTRICT,
-    sets JSONB NOT NULL DEFAULT '[]'::jsonb,
-    notes TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
-);
-
 -- Indexes for better query performance
 CREATE INDEX IF NOT EXISTS idx_workout_days_routine ON workout_days(routine_id);
 CREATE INDEX IF NOT EXISTS idx_workout_day_sets_day ON workout_day_sets(workout_day_id);
 CREATE INDEX IF NOT EXISTS idx_workout_day_sets_muscle ON workout_day_sets(muscle_group_id);
 CREATE INDEX IF NOT EXISTS idx_routines_active ON workout_routines(is_active);
-CREATE INDEX IF NOT EXISTS idx_exercises_workout_day ON exercises(workout_day_id);
-CREATE INDEX IF NOT EXISTS idx_exercises_muscle_group ON exercises(muscle_group_id);
-CREATE INDEX IF NOT EXISTS idx_exercises_workout_day_muscle_group ON exercises(workout_day_id, muscle_group_id);
-CREATE INDEX IF NOT EXISTS idx_exercises_sets_gin ON exercises USING GIN (sets);
-CREATE INDEX IF NOT EXISTS idx_snapshot_exercises_snapshot_workout_day ON snapshot_exercises(snapshot_workout_day_id);
-CREATE INDEX IF NOT EXISTS idx_snapshot_exercises_muscle_group ON snapshot_exercises(muscle_group_id);
-CREATE INDEX IF NOT EXISTS idx_snapshot_exercises_sets_gin ON snapshot_exercises USING GIN (sets);
 
 -- Updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -100,8 +81,4 @@ CREATE TRIGGER update_workout_days_updated_at BEFORE UPDATE ON workout_days
 
 DROP TRIGGER IF EXISTS update_workout_day_sets_updated_at ON workout_day_sets;
 CREATE TRIGGER update_workout_day_sets_updated_at BEFORE UPDATE ON workout_day_sets
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-DROP TRIGGER IF EXISTS update_exercises_updated_at ON exercises;
-CREATE TRIGGER update_exercises_updated_at BEFORE UPDATE ON exercises
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

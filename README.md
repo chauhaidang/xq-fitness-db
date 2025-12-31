@@ -8,11 +8,39 @@ This directory contains a Dockerized PostgreSQL database for the XQ Fitness appl
 
 ## Quick Start
 
-### Using Docker CLI
+### Local Testing Workflow
+
+For local development and testing, use the provided build and run scripts:
+
+```bash
+# Build the Docker image
+cd scripts
+./build-docker.sh
+
+# Start the database container (manual option)
+./run-docker-local.sh
+
+# Or use xq-infra to spin up the database locally
+# (xq-infra will use the xq-fitness-db:latest image)
+```
+
+The build script (`build-docker.sh`) will:
+- Verify Docker is installed and running
+- Build the image with tag `xq-fitness-db:latest`
+- Display build progress and success message
+
+The run script (`run-docker-local.sh`) will:
+- Check if container already exists and handle cleanup
+- Start the container with name `xq-fitness-db-local` on port 5432
+- Display connection information after container starts
+
+**Note**: For automated local testing, use `xq-infra` to spin up the database. The build script creates the `xq-fitness-db:latest` image that xq-infra expects.
+
+### Using Docker CLI (Manual)
 
 ```bash
 # Build the image
-docker build -t xq-fitness-db .
+docker build -t xq-fitness-db:latest .
 
 # Run the container
 docker run -d \
@@ -21,7 +49,7 @@ docker run -d \
   -e POSTGRES_DB=xq_fitness \
   -e POSTGRES_USER=xq_user \
   -e POSTGRES_PASSWORD=xq_password \
-  xq-fitness-db
+  xq-fitness-db:latest
 
 # View logs
 docker logs -f xq-fitness-db
