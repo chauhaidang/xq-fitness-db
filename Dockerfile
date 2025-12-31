@@ -12,6 +12,8 @@ COPY schemas/schema.sql /docker-entrypoint-initdb.d/01-schema.sql
 COPY schemas/seed.sql /docker-entrypoint-initdb.d/02-seed.sql
 COPY migrations/001_add_weekly_snapshots.sql /docker-entrypoint-initdb.d/03-add_weekly_snapshots.sql
 COPY migrations/002_add_abductor_muscle_group.sql /docker-entrypoint-initdb.d/04-add_abductor_muscle_group.sql
+COPY migrations/003_add_exercises.sql /docker-entrypoint-initdb.d/05-add_exercises.sql
+COPY migrations/003_add_snapshot_exercises.sql /docker-entrypoint-initdb.d/06-add_snapshot_exercises.sql
 
 # Expose PostgreSQL port
 EXPOSE 5432
