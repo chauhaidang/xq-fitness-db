@@ -97,7 +97,6 @@ jobs:
           chmod +x scripts/migrate-to-neon.sh
 
       - name: Run migration
-        working-directory: database
         run: |
           case "${{ github.event.inputs.mode }}" in
             schema)
@@ -147,7 +146,6 @@ jobs:
           esac
 
       - name: Verify database state
-        working-directory: database
         run: |
           echo ">> Verifying database state..."
           
