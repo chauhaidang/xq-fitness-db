@@ -1,0 +1,193 @@
+name: Migrate Database to Neon
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Migration mode'
+        required: true
+        default: 'migration'
+        type: choice
+        options:
+          - migration
+          - all-migrations
+          - schema
+          - seed
+          - fresh-setup
+          - validate
+          - create-user
+          - grant-permissions
+          - setup-app-user
+      migration_file:
+        description: 'Migration file name (required when mode is "migration")'
+        required: false
+        type: string
+        default: ''
+      confirm:
+        description: 'Type "yes" to confirm migration'
+        required: true
+        type: string
+
+env:
+  NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+  DB_USER_AD: ${{ secrets.DB_USER_AD || 'xq_app_user' }}
+  DB_PASSWORD_AD: ${{ secrets.DB_PASSWORD_AD }}
+
+jobs:
+  validate:
+    name: Validate Migration Request
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check confirmation
+        run: |
+          if [[ "${{ github.event.inputs.confirm }}" != "yes" ]]; then
+            echo "❌ Migration not confirmed. Please type 'yes' in the confirm field."
+            exit 1
+          fi
+          echo "✓ Migration confirmed"
+
+      - name: Display migration plan
+        run: |
+          echo "Migration Plan:"
+          echo "  Mode: ${{ github.event.inputs.mode }}"
+          echo "  Target: Neon PostgreSQL"
+          if [[ "${{ github.event.inputs.mode }}" == "migration" ]]; then
+            if [[ -z "${{ github.event.inputs.migration_file }}" ]]; then
+              echo "❌ Migration file name is required when mode is 'migration'"
+              exit 1
+            fi
+            echo "  Migration File: ${{ github.event.inputs.migration_file }}"
+          fi
+          echo "  Triggered by: ${{ github.actor }}"
+          echo "  Commit: ${{ github.sha }}"
+
+  migrate:
+    name: Run Database Migration
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Verify Neon connection
+        run: |
+          echo "Testing Neon connection..."
+          if ! psql "$NEON_DATABASE_URL" -c "SELECT version();" >/dev/null 2>&1; then
+            echo "❌ Failed to connect to Neon database"
+            echo "   Note: First connection may take a few seconds if compute is suspended"
+            # Retry once after waiting
+            sleep 5
+            if ! psql "$NEON_DATABASE_URL" -c "SELECT version();" >/dev/null 2>&1; then
+              echo "❌ Connection failed after retry"
+              exit 1
+            fi
+          fi
+          echo "✓ Connected to Neon successfully"
+
+      - name: Prepare migration script
+        run: |
+          chmod +x scripts/migrate-to-neon.sh
+
+      - name: Run migration
+        working-directory: database
+        run: |
+          case "${{ github.event.inputs.mode }}" in
+            schema)
+              echo "Running schema-only migration..."
+              ./scripts/migrate-to-neon.sh schema
+              ;;
+            seed)
+              echo "Running seed-only migration..."
+              ./scripts/migrate-to-neon.sh seed
+              ;;
+            fresh-setup)
+              echo "Running fresh setup (schema + seed + all migrations)..."
+              ./scripts/migrate-to-neon.sh fresh-setup
+              ;;
+            migration)
+              if [[ -z "${{ github.event.inputs.migration_file }}" ]]; then
+                echo "❌ Migration file name is required when mode is 'migration'"
+                exit 1
+              fi
+              echo "Running specific migration: ${{ github.event.inputs.migration_file }}"
+              ./scripts/migrate-to-neon.sh migration "${{ github.event.inputs.migration_file }}"
+              ;;
+            all-migrations)
+              echo "Running all migrations..."
+              ./scripts/migrate-to-neon.sh all-migrations
+              ;;
+            validate)
+              echo "Validating Neon database..."
+              ./scripts/migrate-to-neon.sh validate
+              ;;
+            create-user)
+              echo "Creating application user..."
+              ./scripts/migrate-to-neon.sh create-user
+              ;;
+            grant-permissions)
+              echo "Granting permissions to application user..."
+              ./scripts/migrate-to-neon.sh grant-permissions
+              ;;
+            setup-app-user)
+              echo "Setting up application user (create + grant permissions)..."
+              ./scripts/migrate-to-neon.sh setup-app-user
+              ;;
+            *)
+              echo "Unknown mode: ${{ github.event.inputs.mode }}"
+              exit 1
+              ;;
+          esac
+
+      - name: Verify database state
+        working-directory: database
+        run: |
+          echo ">> Verifying database state..."
+          
+          # Count tables
+          TABLES=$(psql "$NEON_DATABASE_URL" -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';")
+          TABLES=$(echo "$TABLES" | xargs)
+          echo "   Found $TABLES tables"
+          
+          # List tables
+          echo ""
+          echo "Tables in database:"
+          psql "$NEON_DATABASE_URL" -c "\dt"
+          
+          # Row counts
+          echo ""
+          echo "Row counts:"
+          psql "$NEON_DATABASE_URL" -c "
+            SELECT 'muscle_groups' as table_name, COUNT(*) as rows FROM muscle_groups
+            UNION ALL SELECT 'workout_routines', COUNT(*) FROM workout_routines
+            UNION ALL SELECT 'workout_days', COUNT(*) FROM workout_days
+            UNION ALL SELECT 'workout_day_sets', COUNT(*) FROM workout_day_sets
+            UNION ALL SELECT 'exercises', COUNT(*) FROM exercises
+            ORDER BY table_name;
+          " 2>/dev/null || true
+
+      - name: Migration summary
+        if: success()
+        run: |
+          echo ""
+          echo "✓ Migration completed successfully!"
+          echo ""
+          echo "Summary:"
+          echo "  Mode: ${{ github.event.inputs.mode }}"
+          echo "  Target: Neon PostgreSQL"
+          echo "  Time: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "  Triggered by: ${{ github.actor }}"
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "❌ Migration failed!"
+          echo "Please check the logs above for details."
+          exit 1

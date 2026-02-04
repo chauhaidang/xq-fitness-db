@@ -2,3 +2,13 @@
 .DS_Store
 nginx-gateway.conf
 xq-compose.yml
+target/
+
+# Environment files with credentials
+.env
+.env.*
+*.env
+env.neon
+scripts/.env*
+scripts/env.neon
+backups/
