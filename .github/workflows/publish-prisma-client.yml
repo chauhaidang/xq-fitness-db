@@ -1,0 +1,108 @@
+name: Publish Prisma DB Client
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'prisma/schema.prisma'
+      - 'package.generated.json'
+  workflow_dispatch:
+
+env:
+  PACKAGE_NAME: '@chauhaidang/xq-fitness-db-client'
+  NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  publish:
+    name: Generate & Publish Prisma Client
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@chauhaidang'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check version changes
+        id: check
+        run: node scripts/check-version-changes.js package.generated.json
+
+      - name: Generate Prisma Client
+        if: steps.check.outputs.version_changed == 'true' || github.event_name == 'workflow_dispatch'
+        run: |
+          echo ">> Generating Prisma Client..."
+          npx prisma generate
+          echo "✓ Prisma Client generated"
+
+      - name: Package client
+        if: steps.check.outputs.version_changed == 'true' || github.event_name == 'workflow_dispatch'
+        run: |
+          cp package.generated.json generated/prisma/package.json
+          
+          # Copy README
+          echo "# XQ Fitness DB Client" > generated/prisma/README.md
+          echo "Generated Prisma Client for xq-fitness-db." >> generated/prisma/README.md
+          echo "Commit: ${{ github.sha }}" >> generated/prisma/README.md
+
+          cd generated/prisma
+          
+          # Use version from the file (which we checked for changes)
+          # If manual dispatch, we might be republishing same version (which fails npm publish unless changed), 
+          # but assuming manual dispatch is for forced/debug scenarios or when we changed version but script missed it?
+          # Actually, standard flow is: if manually checking, likely want to publish whatever is there.
+          # But npm publish will fail if version exists. 
+          # For now, we trust package.generated.json has the correct intended version.
+          
+          echo ">> Package contents:"
+          npm pack --dry-run
+
+      - name: Publish to GitHub Packages
+        if: steps.check.outputs.version_changed == 'true' || github.event_name == 'workflow_dispatch'
+        working-directory: generated/prisma
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npm publish
+
+      - name: Publish summary
+        if: success() && (steps.check.outputs.version_changed == 'true' || github.event_name == 'workflow_dispatch')
+        run: |
+          VERSION="${{ steps.check.outputs.version }}"
+          # If manual run, version output might be empty from check script if check was skipped? 
+          # No, script outputs check even if unchanged? No, only if changed.
+          # We'll read it from file if missing.
+          if [[ -z "$VERSION" ]]; then
+            VERSION=$(grep '"version":' ../../package.generated.json | grep -oE '[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?')
+          fi
+          
+          echo "✓ Published ${{ env.PACKAGE_NAME }}@$VERSION"
+          echo ""
+          echo "Install with:"
+          echo "  npm install ${{ env.PACKAGE_NAME }}@$VERSION --registry=https://npm.pkg.github.com"
+          echo ""
+          echo "Time: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+
+      - name: Skipped summary
+        if: success() && steps.check.outputs.version_changed != 'true' && github.event_name != 'workflow_dispatch'
+        run: |
+          echo "ℹ️  No version change detected in package.generated.json"
+          echo "   Skipping publish."
+
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "❌ Failed to publish Prisma Client!"
+          echo "Please check the logs above for details."
+          exit 1

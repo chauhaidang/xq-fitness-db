@@ -1,0 +1,14 @@
+{
+    "name": "@chauhaidang/xq-fitness-db-client",
+    "version": "0.1.0",
+    "description": "Generated Prisma client for the xq_fitness PostgreSQL database",
+    "main": "client.ts",
+    "types": "client.ts",
+    "publishConfig": {
+        "registry": "https://npm.pkg.github.com"
+    },
+    "peerDependencies": {
+        "@prisma/client": "^7.4.0",
+        "@prisma/adapter-pg": "^7.4.0"
+    }
+}
