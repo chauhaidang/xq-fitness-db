@@ -2,28 +2,26 @@
 set -euo pipefail
 
 #######################################################################
-# XQ Fitness Database Migration: DigitalOcean → Neon
-# 
-# This script handles the complete migration from DO Managed PostgreSQL
-# to Neon Serverless PostgreSQL.
+# XQ Fitness Database Migration: Neon
 #
-# INITIAL MIGRATION (from DigitalOcean):
-#   ./migrate-to-neon.sh export          # Export from DO (pg_dump)
-#   ./migrate-to-neon.sh import          # Import to Neon (pg_restore)
-#   ./migrate-to-neon.sh validate        # Validate migration
-#   ./migrate-to-neon.sh full            # Full migration (export + import + validate)
+# Production database migrations for Neon serverless PostgreSQL.
 #
-# FUTURE MIGRATIONS (apply new migration scripts to Neon):
+# FRESH SETUP (new Neon database from scripts):
+#   ./migrate-to-neon.sh fresh-setup     # Apply schema + seed + all migrations
 #   ./migrate-to-neon.sh schema          # Apply schema.sql only
 #   ./migrate-to-neon.sh seed            # Apply seed.sql only
+#
+# INCREMENTAL MIGRATIONS (apply new scripts to Neon):
 #   ./migrate-to-neon.sh migration <file> # Apply specific migration file
 #   ./migrate-to-neon.sh all-migrations  # Apply all migrations in order
 #
 # Required Environment Variables:
-#   For export: DO_DB_HOST, DO_DB_PORT, DO_DB_USER, DO_DB_PASSWORD, DO_DB_NAME
-#              Or: DO_DATABASE_URL
-#   For import/migrations: NEON_DB_HOST, NEON_DB_PORT, NEON_DB_USER, NEON_DB_PASSWORD, NEON_DB_NAME
-#              Or: NEON_DATABASE_URL
+#   NEON_DATABASE_URL or NEON_DB_HOST/PORT/USER/PASSWORD/NAME
+#
+# Optional (user management): DB_USER_AD, DB_PASSWORD_AD
+#
+# Legacy one-time import (export/import/validate/full) remains for historical
+# pg_dump backups; production path is schema/seed/migration commands above.
 #######################################################################
 
 # Colors for output

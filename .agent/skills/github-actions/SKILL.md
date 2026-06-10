@@ -13,8 +13,7 @@ All workflows live in `.github/workflows/`. Filenames should be kebab-case and d
 ```
 .github/workflows/
 ├── publish-docker.yml      # Build & push Docker image to GHCR
-├── migrate-to-do.yml       # Deploy schema to DigitalOcean
-└── migrate-to-neon.yml     # Deploy schema to Neon
+└── migrate-to-neon.yml     # Deploy schema/migrations to Neon (production)
 ```
 
 ---
@@ -152,9 +151,6 @@ jobs:
 
 | Secret | Used In | Purpose |
 |--------|---------|---------|
-| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | migrate-to-do | DigitalOcean DB connection |
-| `DO_TOKEN`, `DB_ID` | migrate-to-do | DigitalOcean API (IP whitelisting) |
-| `DB_ADMIN_PASSWORD`, `APP_DB_USER` | migrate-to-do | Permission management |
 | `NEON_DATABASE_URL` | migrate-to-neon | Neon connection string |
 | `DB_USER_AD`, `DB_PASSWORD_AD` | migrate-to-neon | Neon app user credentials |
 | `GITHUB_TOKEN` | publish-docker | GHCR authentication (auto-provided) |
@@ -206,35 +202,7 @@ steps:
 
 ## 5. Database Migration Workflows
 
-### DigitalOcean Pattern (IP Whitelisting Required)
-
-DigitalOcean managed databases require IP whitelisting. The workflow:
-1. Gets runner IP via `api.ipify.org`
-2. Adds IP to DB firewall via DO API
-3. Runs migration
-4. **Always** removes IP in cleanup (even on failure)
-
-```yaml
-- name: Get runner IP
-  id: ip
-  run: echo "ip=$(curl -s https://api.ipify.org)" >> $GITHUB_OUTPUT
-
-- name: Whitelist IP
-  run: |
-    curl -s -X PUT \
-      -H "Authorization: Bearer $DO_TOKEN" \
-      -d '{"rules": [{"type": "ip_addr", "value": "'$RUNNER_IP'"}]}' \
-      "https://api.digitalocean.com/v2/databases/$DB_ID/firewall"
-    sleep 10  # Wait for propagation
-
-- name: Remove IP (cleanup)
-  if: always()
-  run: |
-    curl -s -X PUT \
-      -H "Authorization: Bearer $DO_TOKEN" \
-      -d '{"rules": []}' \
-      "https://api.digitalocean.com/v2/databases/$DB_ID/firewall" || true
-```
+Production migrations use Neon via `migrate-to-neon.yml` and `scripts/migrate-to-neon.sh`.
 
 ### Neon Pattern (Direct Connection)
 

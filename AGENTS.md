@@ -26,13 +26,10 @@ database/
 │   └── smoke.test.ts         # Schema verification smoke tests
 ├── scripts/                  # Build, deploy, and migration scripts
 │   ├── build-docker.sh       # Build Docker image locally
-│   ├── migrate-to-do.sh      # Migrate schema to DigitalOcean
-│   ├── migrate-to-neon.sh    # Migrate schema to Neon
-│   └── grant-permissions.sh  # DB permission management
+│   └── migrate-to-neon.sh    # Apply schema/migrations to Neon (production)
 ├── .github/workflows/        # CI/CD pipelines
 │   ├── publish-docker.yml    # Build & push image to GHCR
-│   ├── migrate-to-do.yml     # Deploy schema to DigitalOcean
-│   └── migrate-to-neon.yml   # Deploy schema to Neon
+│   └── migrate-to-neon.yml   # Deploy schema to Neon (production)
 ├── test-env/                 # Docker Compose service configs
 ├── Dockerfile                # postgres:16-alpine based image
 ├── prisma.config.ts          # Prisma CLI configuration
@@ -167,8 +164,7 @@ PostgreSQL auto-executes these on first container start.
 |---|---|---|
 | `publish-docker.yml` | Push to main, manual | Build & push image to GHCR with git hash + `latest` tag |
 | `publish-prisma-client.yml` | Push to main (schema changes), manual | Generate & publish Prisma client to GitHub Packages npm registry |
-| `migrate-to-do.yml` | Manual | Apply schema + seed to DigitalOcean managed PostgreSQL |
-| `migrate-to-neon.yml` | Manual | Apply schema + seed to Neon serverless PostgreSQL |
+| `migrate-to-neon.yml` | Manual | Apply schema + seed + migrations to Neon (production) |
 
 ## Environment Variables
 
@@ -178,8 +174,9 @@ Managed via `.env` file (gitignored). Required:
 DATABASE_URL=postgresql://xq_user:xq_password@localhost:5432/xq_fitness?schema=public
 ```
 
-For CI/production migrations:
-- `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`
+For CI/production migrations (Neon):
+- `NEON_DATABASE_URL`
+- `DB_USER_AD`, `DB_PASSWORD_AD` (app user management)
 
 ## Adding a New Migration
 

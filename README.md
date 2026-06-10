@@ -2,7 +2,7 @@
 
 This directory contains a Dockerized PostgreSQL database for the XQ Fitness application, pre-populated with schema and seed data and all upcoming migrations
 
-[![Migrate Database to DigitalOcean](https://github.com/chauhaidang/xq-fitness-db/actions/workflows/migrate-to-do.yml/badge.svg)](https://github.com/chauhaidang/xq-fitness-db/actions/workflows/migrate-to-do.yml)
+[![Migrate Database to Neon](https://github.com/chauhaidang/xq-fitness-db/actions/workflows/migrate-to-neon.yml/badge.svg)](https://github.com/chauhaidang/xq-fitness-db/actions/workflows/migrate-to-neon.yml)
 
 [![Publish Docker Image](https://github.com/chauhaidang/xq-fitness-db/actions/workflows/publish-docker.yml/badge.svg)](https://github.com/chauhaidang/xq-fitness-db/actions/workflows/publish-docker.yml)
 
@@ -233,35 +233,32 @@ docker run -d \
   ghcr.io/YOUR_USERNAME/xq-fitness-db:latest
 ```
 
-## Migrating to DigitalOcean
+## Production Database (Neon)
 
-For production deployment, migrate the schema and seed data to DigitalOcean PostgreSQL:
+Production uses Neon serverless PostgreSQL. Apply schema, seed data, and migrations via GitHub Actions or the local script.
 
 ### Using GitHub Actions (Recommended)
 
-1. Add database connection secrets to GitHub (Settings → Secrets → Actions):
-   - `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`
-2. Go to Actions → **Migrate Database to DigitalOcean**
+1. Add secrets to GitHub (Settings → Secrets → Actions):
+   - `NEON_DATABASE_URL` — Neon connection string
+   - `DB_USER_AD`, `DB_PASSWORD_AD` — app user credentials (for user-management modes)
+2. Go to Actions → **Migrate Database to Neon**
 3. Click **Run workflow** → Choose mode → Type "yes" → **Run**
+
+Available modes: `schema`, `seed`, `fresh-setup`, `migration`, `all-migrations`, `validate`, `create-user`, `grant-permissions`, `setup-app-user`.
 
 ### Using Local Script
 
 ```bash
-# Set environment variables
-export DB_HOST=your-db-host
-export DB_PORT=25060
-export DB_USER=xq_app_user
-export DB_PASSWORD=your-password
-export DB_NAME=xq_fitness
+export NEON_DATABASE_URL="postgresql://user:password@host/db?sslmode=require"
 
-# Run migration
 cd scripts
-./migrate-to-do.sh
-
-# Or schema only / seed only
-./migrate-to-do.sh --schema-only
-./migrate-to-do.sh --seed-only
+./migrate-to-neon.sh schema          # Apply schema.sql only
+./migrate-to-neon.sh seed              # Apply seed.sql only
+./migrate-to-neon.sh all-migrations    # Apply all migration files
+./migrate-to-neon.sh fresh-setup       # Schema + seed + all migrations
+./migrate-to-neon.sh migration 005_example.sql  # Single migration file
 ```
 
-See [MIGRATION.md](./MIGRATION.md) for detailed migration documentation.
+For app user setup, set `DB_USER_AD` and `DB_PASSWORD_AD`, then run `./migrate-to-neon.sh setup-app-user`.
 
