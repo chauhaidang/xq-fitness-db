@@ -18,7 +18,7 @@ Dockerized PostgreSQL 16 database for the XQ Fitness application. Owns the schem
 | Latest migration | `004_update_exercises_to_simplified_model.sql` |
 | Schema source of truth | SQL files in `schemas/` + `migrations/` |
 | Prisma role | Introspection and client generation only — **not** the migration tool |
-| Consumers | `read-service` and `write-service` connect via raw `pg` (no Prisma in services) |
+| Consumers | `write-service` connects via raw `pg` (no Prisma in services) |
 
 ## Project Structure
 
@@ -422,7 +422,7 @@ npm test              # all tests in tests/
 
 ## Service Integration
 
-`read-service` and `write-service` do **not** use Prisma. They connect with raw `pg` using these environment variables:
+`write-service` does **not** use Prisma. It connects with raw `pg` using these environment variables:
 
 | Variable | Local default |
 |----------|---------------|
