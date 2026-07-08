@@ -19,6 +19,7 @@
     "url": "https://github.com/chauhaidang/xq-fitness-db/issues"
   },
   "homepage": "https://github.com/chauhaidang/xq-fitness-db#readme",
+  "packageManager": "npm@11.16.0",
   "devDependencies": {
     "@prisma/adapter-pg": "^7.4.0",
     "@swc/core": "^1.15.11",
