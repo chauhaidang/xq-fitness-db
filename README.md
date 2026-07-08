@@ -137,6 +137,8 @@ On first container start, PostgreSQL runs scripts from `/docker-entrypoint-initd
 
 ## Schema (Current — 9 Tables)
 
+> **Visual schema:** See [docs/SCHEMA.md](docs/SCHEMA.md) for Mermaid ER diagrams, delete-behavior maps, and snapshot data flow.
+
 ### Entity relationships
 
 ```

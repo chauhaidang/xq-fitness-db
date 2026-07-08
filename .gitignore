@@ -11,6 +11,7 @@ target/
 env.neon
 scripts/.env*
 scripts/env.neon
+scripts/env.neon.*
 backups/
 /generated/prisma
 node_modules/
